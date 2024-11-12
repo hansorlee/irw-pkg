@@ -34,17 +34,22 @@ fetch_data <- function(name) {
 
 
 
-#' Filter Tables by Minimum Rows and Required Columns
+#' Filter Tables by Inclusion Criteria
 #'
 #' This function filters tables in the IRW database to include only those
-#' that have at least a specified number of rows and contain specified columns.
-#' It uses precomputed metadata for faster access.
+#' that meet specific criteria such as minimum rows, required columns, unique ID count,
+#' unique item count, and sparsity (average attempts per item). It uses precomputed metadata for faster access.
 #'
 #' @param n_rows An integer specifying the minimum number of rows required in a table.
 #' @param required_columns A character vector specifying the names of required columns.
+#' @param min_unique_ids An integer specifying the minimum number of unique IDs required.
+#' @param min_unique_items An integer specifying the minimum number of unique items required.
+#' @param max_sparsity A numeric value specifying the maximum sparsity (average attempts per item).
 #' @return A character vector of table names that meet the criteria.
 #' @export
-filter_tables <- function(n_rows = 0, required_columns = NULL) {
+filter_tables <- function(n_rows = 0, required_columns = NULL, min_unique_ids = 0,
+                          min_unique_items = 0, max_sparsity = Inf) {
+
   # Load the precomputed metadata summary
   metadata_path <- "data/metadata_summary.RData"
   if (!file.exists(metadata_path)) {
@@ -56,11 +61,12 @@ filter_tables <- function(n_rows = 0, required_columns = NULL) {
   matching_tables <- character(0)
 
   # Iterate through each row in metadata_summary to apply filters
+  metadata_summary = irwpkg:::metadata_summary
   for (i in seq_len(nrow(metadata_summary))) {
     table_info <- metadata_summary[i, ]
 
     # Check minimum number of rows
-    if (!is.null(n_rows) && table_info$numRows < n_rows) next
+    if (n_rows > 0 && table_info$numRows < n_rows) next
 
     # Check if table contains all required columns
     if (!is.null(required_columns)) {
@@ -71,12 +77,20 @@ filter_tables <- function(n_rows = 0, required_columns = NULL) {
       if (!all(required_columns %in% table_columns)) next
     }
 
-    # If both criteria are met, add the table name to the results
+    # Check minimum number of unique IDs
+    if (min_unique_ids > 0 && table_info$num_unique_ids < min_unique_ids) next
+
+    # Check minimum number of unique items
+    if (min_unique_items > 0 && table_info$num_unique_items < min_unique_items) next
+
+    # Check if sparsity is within the maximum limit
+    if (table_info$sparsity > max_sparsity) next
+
+    # If all criteria are met, add the table name to the results
     matching_tables <- c(matching_tables, table_info$table_name)
   }
 
   # Return the list of table names that meet the criteria
   return(matching_tables)
 }
-
 

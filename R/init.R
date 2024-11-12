@@ -2,7 +2,7 @@
 
 
 # Declare global variable to suppress check note
-utils::globalVariables(c("metadata_summary", "datasource"))
+utils::globalVariables(c("datasource"))
 
 #' Initialize Datasource
 #'
